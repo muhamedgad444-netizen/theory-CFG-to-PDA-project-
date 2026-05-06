@@ -122,7 +122,7 @@ def cfg_to_pda(cfg):
 class PDADiagram:
     def __init__(self, canvas):
         self.c = canvas
-        self.r = 38
+        self.r = 45  # Increased radius for clearer states
         self.positions = {}
         self.c.bind('<Configure>', lambda e: self._on_resize())
         # Colors
@@ -132,7 +132,7 @@ class PDADiagram:
         self.ACCEPT_EDGE = '#3fb950'
         self.ARROW = '#58a6ff'
         self.LABEL_BG = '#1c2128'
-        self.LABEL_FG = '#c9d1d9'
+        self.LABEL_FG = '#ffffff' # Brighter text
         self.START_CLR = '#f0883e'
 
     def draw(self, pda):
@@ -149,7 +149,7 @@ class PDADiagram:
         w = self.c.winfo_width() or 800
         h = self.c.winfo_height() or 400
         cy = h // 2
-        spacing = min(180, (w - 140) // 3)
+        spacing = min(220, (w - 140) // 3) # Increased spacing
         sx = max(100, (w - spacing * 3) // 2)
         self.positions = {
             'q_start': (sx, cy), 'q1': (sx+spacing, cy),
@@ -179,22 +179,28 @@ class PDADiagram:
 
         # Start arrow
         sx, sy = self.positions['q_start']
-        x1, x2 = sx - r - 50, sx - r
-        c.create_line(x1, sy, x2, sy, fill=self.START_CLR, width=2, arrow=tk.LAST, arrowshape=(10,12,5))
-        c.create_text((x1+x2)//2, sy-12, text='start', fill=self.START_CLR,
-                       font=('Consolas', 9, 'italic'))
+        x1, x2 = sx - r - 60, sx - r
+        c.create_line(x1, sy, x2, sy, fill=self.START_CLR, width=3, arrow=tk.LAST, arrowshape=(14,16,6))
+        
+        t_id = c.create_text((x1+x2)//2, sy-16, text='start', fill=self.START_CLR,
+                       font=('Consolas', 11, 'italic', 'bold'))
+        bbox = c.bbox(t_id)
+        if bbox:
+            c.create_rectangle(bbox[0]-4, bbox[1]-2, bbox[2]+4, bbox[3]+2,
+                               fill=self.BG, outline='')
+            c.tag_raise(t_id)
 
         # Draw states
         for name, (cx, cy) in self.positions.items():
             is_acc = name in self.pda['F']
             edge = self.ACCEPT_EDGE if is_acc else self.STATE_EDGE
             c.create_oval(cx-r, cy-r, cx+r, cy+r, fill=self.STATE_FILL,
-                          outline=edge, width=2.5)
+                          outline=edge, width=3)
             if is_acc:
-                c.create_oval(cx-r+5, cy-r+5, cx+r-5, cy+r-5,
+                c.create_oval(cx-r+6, cy-r+6, cx+r-6, cy+r-6,
                               fill='', outline=self.ACCEPT_EDGE, width=2)
             c.create_text(cx, cy, text=name, fill='#e6edf3',
-                          font=('Consolas', 10, 'bold'))
+                          font=('Consolas', 12, 'bold'))
 
     def _draw_arrow(self, sx, sy, dx, dy, labels):
         c, r = self.c, self.r
@@ -203,35 +209,55 @@ class PDADiagram:
         y1 = sy + r*math.sin(ang)
         x2 = dx - r*math.cos(ang)
         y2 = dy - r*math.sin(ang)
-        c.create_line(x1, y1, x2, y2, fill=self.ARROW, width=1.8,
-                      arrow=tk.LAST, arrowshape=(10,12,5))
-        mx, my = (x1+x2)/2, (y1+y2)/2 - 14
+        
+        # Thicker arrow
+        c.create_line(x1, y1, x2, y2, fill=self.ARROW, width=2.5,
+                      arrow=tk.LAST, arrowshape=(14,16,6))
+                      
+        mx, my = (x1+x2)/2, (y1+y2)/2 - 16
         txt = '\n'.join(labels)
-        c.create_text(mx, my, text=txt, fill=self.LABEL_FG,
-                      font=('Consolas', 8), justify='center', anchor='s')
+        
+        # Text with background for better visibility
+        t_id = c.create_text(mx, my, text=txt, fill=self.LABEL_FG,
+                      font=('Consolas', 10, 'bold'), justify='center', anchor='s')
+        bbox = c.bbox(t_id)
+        if bbox:
+            pad = 4
+            c.create_rectangle(bbox[0]-pad, bbox[1]-pad, bbox[2]+pad, bbox[3]+pad,
+                               fill=self.LABEL_BG, outline=self.ARROW, width=1)
+            c.tag_raise(t_id)
 
     def _draw_self_loop(self, cx, cy, labels):
         c, r = self.c, self.r
         # Arc above state
-        lx, ly = cx, cy - r - 32
-        arc_r = 28
+        lx, ly = cx, cy - r - 45
+        arc_r = 40
         c.create_arc(cx-arc_r, ly-arc_r, cx+arc_r, ly+arc_r,
                      start=200, extent=140, style='arc',
-                     outline=self.ARROW, width=1.8)
+                     outline=self.ARROW, width=2.5)
         # Small arrowhead
         ax = cx + arc_r * math.cos(math.radians(340))
         ay = ly - arc_r * math.sin(math.radians(340))
-        c.create_line(ax-4, ay-6, ax+2, ay+1, fill=self.ARROW, width=1.5)
-        c.create_line(ax+6, ay-4, ax+2, ay+1, fill=self.ARROW, width=1.5)
+        c.create_line(ax-5, ay-7, ax+3, ay+2, fill=self.ARROW, width=2.5)
+        c.create_line(ax+7, ay-5, ax+3, ay+2, fill=self.ARROW, width=2.5)
+        
         # Labels
-        max_show = 6
+        max_show = 8
         if len(labels) > max_show:
             shown = labels[:max_show-1] + [f'... +{len(labels)-max_show+1} more']
         else:
             shown = labels
         txt = '\n'.join(shown)
-        c.create_text(cx, ly - arc_r - 6, text=txt, fill=self.LABEL_FG,
-                      font=('Consolas', 7), justify='center', anchor='s')
+        
+        # Text with background
+        t_id = c.create_text(cx, ly - arc_r - 8, text=txt, fill=self.LABEL_FG,
+                      font=('Consolas', 10, 'bold'), justify='center', anchor='s')
+        bbox = c.bbox(t_id)
+        if bbox:
+            pad = 4
+            c.create_rectangle(bbox[0]-pad, bbox[1]-pad, bbox[2]+pad, bbox[3]+pad,
+                               fill=self.LABEL_BG, outline=self.ARROW, width=1)
+            c.tag_raise(t_id)
 
 # ── Main GUI ─────────────────────────────────────────────────────
 EXAMPLES = {
